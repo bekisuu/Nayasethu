@@ -1,0 +1,115 @@
+{
+  "app": {
+    "title": "NyayaSathi",
+    "tagline": "Understand your legal notice. Know your next safe step.",
+    "disclaimer": "This is NOT legal advice. NyayaSathi provides general legal information only. Always consult a qualified lawyer for your specific situation."
+  },
+  "nav": {
+    "home": "Home",
+    "dashboard": "Impact Dashboard",
+    "language": "Language"
+  },
+  "landing": {
+    "getStarted": "Get Started",
+    "subtitle": "AI-powered legal information assistant",
+    "feature1": "Upload & understand legal notices",
+    "feature2": "Get safe next steps",
+    "feature3": "Connect with legal aid",
+    "chooseLanguage": "Choose your language"
+  },
+  "issues": {
+    "title": "What is your issue about?",
+    "rent": "Rent / Eviction",
+    "rentDesc": "Eviction notice, rent dispute, tenant rights",
+    "employment": "Employment",
+    "employmentDesc": "Termination, wages, workplace issues",
+    "consumer": "Consumer",
+    "consumerDesc": "Product defect, service complaint, refund",
+    "domestic": "Domestic Violence",
+    "domesticDesc": "Protection order, safety, support",
+    "other": "Other",
+    "otherDesc": "Any other legal notice or question"
+  },
+  "upload": {
+    "title": "Share your legal notice or question",
+    "dropzone": "Drop your legal notice here (PDF, JPG, PNG)",
+    "or": "or",
+    "typeQuestion": "Type your question or describe your situation",
+    "voiceInput": "Tell your story by voice",
+    "recording": "Recording... Click to stop",
+    "demoMode": "Demo Mode: Using sample transcript. Production speech recognition requires a configured provider.",
+    "startRecording": "Start Recording",
+    "stopRecording": "Stop Recording",
+    "reviewText": "Review & Edit Extracted Text",
+    "ocrNote": "Text extracted from your document. Please review and correct any errors.",
+    "analyze": "Analyze My Case",
+    "processing": "Processing your document..."
+  },
+  "results": {
+    "summary": "Plain-Language Summary",
+    "parties": "Parties & Roles",
+    "dates": "Important Dates",
+    "deadlines": "Possible Deadlines",
+    "requestedAction": "Requested Action",
+    "issueAreas": "Issue Areas",
+    "missingInfo": "Missing Information",
+    "evidenceChecklist": "Evidence Checklist",
+    "safeSteps": "Safe Next Steps",
+    "avoid": "What to Avoid",
+    "lawyerQuestions": "Questions for a Lawyer",
+    "sources": "Source Citations",
+    "confidence": "Confidence",
+    "humanReview": "Human Review Status",
+    "timeline": "Event Timeline",
+    "evidenceLocker": "Evidence Locker",
+    "todayChecklist": "What Should I Do Today?",
+    "avoidChecklist": "What Should I Avoid?",
+    "casePack": "Create Lawyer-Ready Case Pack",
+    "legalAid": "Legal Aid Referrals",
+    "deleteCase": "Delete My Case & Data"
+  },
+  "safety": {
+    "green": "General Information",
+    "greenDesc": "This information is provided with sources for your reference.",
+    "yellow": "Needs Lawyer Review",
+    "yellowDesc": "There is uncertainty or conflicting information. Please consult a lawyer.",
+    "red": "Urgent - Seek Help Now",
+    "redDesc": "This situation may require immediate human support or official intervention."
+  },
+  "casePack": {
+    "consent": "I consent to creating this case pack. I understand it will contain my case information for sharing with a lawyer.",
+    "download": "Download Case Pack",
+    "share": "Share with Legal Aid"
+  },
+  "legalAid": {
+    "title": "Official Legal Aid Resources",
+    "nalsa": "National Legal Services Authority (NALSA)",
+    "slsa": "State Legal Services Authority",
+    "dlsa": "District Legal Services Authority",
+    "helpline": "Legal Aid Helpline: 15100",
+    "website": "Visit Website"
+  },
+  "dashboard": {
+    "title": "Impact Dashboard",
+    "subtitle": "Demo data - for demonstration purposes only",
+    "noticesAnalyzed": "Notices Analyzed",
+    "timelinesCreated": "Timelines Created",
+    "legalAidReached": "Users Reached Legal Aid",
+    "documentsOrganized": "Documents Organized",
+    "casesEscalated": "Cases Escalated for Human Review"
+  },
+  "common": {
+    "back": "Back",
+    "next": "Next",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "loading": "Loading...",
+    "readAloud": "Read Aloud",
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low"
+  }
+}

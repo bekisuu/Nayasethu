@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom font families */
+@layer base {
+  body {
+    @apply font-sans;
+  }
+}
+Ran command: `npm run dev`
+Listed directory nayasethu
+Ran command: `npm run dev`
+Used tool: manage_task
+Ran command: `dir`
+Ran command: `dir`
+Ran command: `npm run dev`
+
+I have started the development server for your project (`kids-recommerce`). 
+
+You can view and test your application by opening the following link in your browser:
+
+**[http://localhost:3000](http://localhost:3000)**
+
+Let me know if you run into any issues or need further assistance!
