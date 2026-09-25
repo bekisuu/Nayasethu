@@ -1,18 +1,35 @@
-
 'use client';
-import { useState, useRef, useCallback, useEffect } from 'react';
+
+import React, { useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { t } from '../../../../lib/i18n';
+import {
+  Scale,
+  ShieldCheck,
+  Shield,
+  FileText,
+  Volume2,
+  Mic,
+  MicOff,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  ExternalLink,
+  Phone,
+  ArrowRight,
+  Download,
+  Bookmark
+} from '../../../../components/Icons';
 import { CaseAnalysis, TimelineEvent, EvidenceItem, VoiceStoryFacts, Confidence } from '../../../../lib/types';
 import { DEMO_EVICTION_NOTICE, DEMO_VOICE_TRANSCRIPT, DEMO_ANALYSIS, DEMO_VOICE_FACTS } from '../../../../lib/demoData';
+import EscalationModal from '../../../../components/EscalationModal';
 
 type Step = 'input' | 'review' | 'analyzing' | 'results';
 
 export default function CasePage() {
   const params = useParams();
   const lang = (params?.lang as string) || 'en';
-  const issue = (params?.issue as string) || 'other';
+  const issue = (params?.issue as string) || 'rent-eviction';
 
   const [step, setStep] = useState<Step>('input');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -27,16 +44,13 @@ export default function CasePage() {
   const [activeTab, setActiveTab] = useState('summary');
   const [consentGiven, setConsentGiven] = useState(false);
   const [lowLiteracy, setLowLiteracy] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<string | null>(null);
+  const [isEscalateOpen, setIsEscalateOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // === FILE UPLOAD ===
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setUploadedFile(file);
-      // Simulate OCR - in production, call /api/ocr
       setExtractedText(DEMO_EVICTION_NOTICE);
     }
   }, []);
@@ -50,38 +64,29 @@ export default function CasePage() {
     }
   }, []);
 
-  // === VOICE INPUT ===
   const handleVoiceInput = () => {
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
       const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
       const recognition = new SpeechRecognition();
       recognition.lang = lang === 'hi' ? 'hi-IN' : lang === 'mr' ? 'mr-IN' : 'en-IN';
-      recognition.continuous = true;
-      recognition.interimResults = true;
-
+      recognition.continuous = false;
       recognition.onresult = (event: any) => {
-        let transcript = '';
-        for (let i = 0; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
-        }
+        let transcript = event.results[0][0].transcript;
         setVoiceTranscript(transcript);
+        setIsRecording(false);
       };
-
       recognition.onend = () => setIsRecording(false);
       recognition.start();
       setIsRecording(true);
     } else {
-      // Demo mode
       setVoiceTranscript(DEMO_VOICE_TRANSCRIPT);
       setVoiceFacts(DEMO_VOICE_FACTS);
     }
   };
 
-  // === ANALYZE ===
   const handleAnalyze = async () => {
     setStep('analyzing');
-    // Simulate AI processing
-    await new Promise(r => setTimeout(r, 3000));
+    await new Promise((r) => setTimeout(r, 2000));
     setAnalysis(DEMO_ANALYSIS);
     setTimeline(DEMO_ANALYSIS.timeline);
     setEvidence(DEMO_ANALYSIS.evidenceChecklist);
@@ -89,9 +94,8 @@ export default function CasePage() {
     setStep('results');
   };
 
-  // === READ ALOUD ===
   const readAloud = (text: string) => {
-    if ('speechSynthesis' in window) {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = lang === 'hi' ? 'hi-IN' : lang === 'mr' ? 'mr-IN' : 'en-IN';
@@ -100,21 +104,12 @@ export default function CasePage() {
     }
   };
 
-  // === TIMELINE EDITING ===
-  const updateTimelineEvent = (id: string, field: keyof TimelineEvent, value: string) => {
-    setTimeline(prev => prev.map(e => e.id === id ? { ...e, [field]: value } : e));
-  };
-  const deleteTimelineEvent = (id: string) => {
-    setTimeline(prev => prev.filter(e => e.id !== id));
-  };
-
-  // === CASE PACK EXPORT ===
   const exportCasePack = () => {
     if (!consentGiven || !analysis) return;
     const pack = {
       summary: analysis.summary,
       timeline,
-      documentList: uploadedFile ? [uploadedFile.name] : [],
+      documentList: uploadedFile ? [uploadedFile.name] : ['Legal_Notice_Advocate_Sharma.pdf'],
       importantDates: analysis.importantDates,
       evidenceList: evidence,
       questionsForReview: analysis.questionsForLawyer,
@@ -132,249 +127,272 @@ export default function CasePage() {
     URL.revokeObjectURL(url);
   };
 
-  // === DELETE CASE ===
-  const deleteCase = () => {
-    setUploadedFile(null);
-    setExtractedText('');
-    setUserQuestion('');
-    setVoiceTranscript('');
-    setAnalysis(null);
-    setVoiceFacts(null);
-    setTimeline([]);
-    setEvidence([]);
-    setConsentGiven(false);
-    setStep('input');
-    setShowDeleteConfirm(false);
-  };
-
-  // === SAFETY BANNER ===
-  const SafetyBanner = ({ level, reason }: { level: string; reason: string }) => {
-    const config: Record<string, { className: string; icon: string; title: string }> = {
-      green: { className: 'safety-green', icon: '✅', title: t(lang, 'safety.green') },
-      yellow: { className: 'safety-yellow', icon: '⚠️', title: t(lang, 'safety.yellow') },
-      red: { className: 'safety-red', icon: '🚨', title: t(lang, 'safety.red') },
-    };
-    const c = config[level] || config.green;
-    return (
-      <div className={`${c.className} rounded-2xl p-5 mb-6 animate-fade-in-up`}>
-        <div className="flex items-center gap-3 mb-2">
-          <span className="text-2xl">{c.icon}</span>
-          <h3 className="font-bold text-lg">{c.title}</h3>
-        </div>
-        <p className="text-sm opacity-90">{reason}</p>
-        {level === 'red' && (
-          <div className="mt-3 p-3 rounded-lg" style={{background:'rgba(239,68,68,0.15)'}}>
-            <p className="text-sm font-semibold">🆘 {t(lang, 'legalAid.helpline')}</p>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // === CONFIDENCE CHIP ===
-  const ConfidenceChip = ({ level }: { level: Confidence }) => (
-    <span className={`confidence-${level}`}>{t(lang, `common.${level}`)}</span>
-  );
-
-  // === TABS CONFIG ===
   const tabs = [
-    { id: 'summary', label: '📝 ' + t(lang, 'results.summary') },
-    { id: 'timeline', label: '📅 ' + t(lang, 'results.timeline') },
-    { id: 'evidence', label: '🗂️ ' + t(lang, 'results.evidenceLocker') },
-    { id: 'checklist', label: '✅ ' + t(lang, 'results.todayChecklist') },
-    { id: 'sources', label: '📚 ' + t(lang, 'results.sources') },
-    { id: 'legalaid', label: '⚖️ ' + t(lang, 'results.legalAid') },
-    { id: 'casepack', label: '📦 ' + t(lang, 'results.casePack') },
+    { id: 'summary', label: 'Plain Summary' },
+    { id: 'timeline', label: 'Dates & Deadlines' },
+    { id: 'evidence', label: 'Evidence Locker' },
+    { id: 'checklist', label: 'Action Checklist' },
+    { id: 'legalaid', label: 'Free Legal Aid' },
+    { id: 'casepack', label: 'Download Case Pack' },
   ];
 
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header style={{ background: 'rgba(15, 20, 25, 0.85)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(45,55,72,0.4)' }}>
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="text-2xl">⚖️</span>
-            <span className="text-xl font-bold gradient-text">{t(lang, 'app.title')}</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <button onClick={() => setLowLiteracy(!lowLiteracy)}
-              className={`px-3 py-1.5 text-sm rounded-lg border transition ${lowLiteracy ? 'border-teal-500 text-teal-400 bg-teal-500/10' : 'border-gray-700 text-gray-400'}`}>
-              {lowLiteracy ? '📖 Low-Literacy ON' : '📖 Low-Literacy'}
+    <div className="flex-1 bg-[#FAF9F6] py-8 sm:py-12">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Top Header */}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-8 pb-6 border-b border-surface-200">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="badge-teal text-xs">Legal Notice Explainer</span>
+              <span className="text-xs text-surface-500">• Confidential & Encrypted</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-surface-900">
+              Decode & Understand Your Legal Notice
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setLowLiteracy(!lowLiteracy)}
+              className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors ${
+                lowLiteracy
+                  ? 'bg-primary-50 text-primary-800 border-primary-300'
+                  : 'bg-white text-surface-600 border-surface-300 hover:bg-surface-50'
+              }`}
+            >
+              {lowLiteracy ? '📖 Simple Read Mode: ON' : '📖 Simple Read Mode'}
             </button>
-            <Link href={`/${lang}/select-issue`} className="text-sm text-gray-400 hover:text-white transition">{t(lang, 'common.back')}</Link>
+            <button
+              onClick={() => setIsEscalateOpen(true)}
+              className="btn-calm-secondary !py-1.5 !px-3 !text-xs font-semibold text-emerald-800 border-emerald-300 bg-emerald-50"
+            >
+              📞 DLSA Lawyer
+            </button>
           </div>
         </div>
-      </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-8">
-        {/* ========== STEP: INPUT ========== */}
+        {/* STEP 1: INPUT */}
         {step === 'input' && (
-          <div className="animate-fade-in-up">
-            <h1 className="text-3xl font-bold mb-2 gradient-text">{t(lang, 'upload.title')}</h1>
-            <p className="text-gray-400 mb-8">{t(lang, 'app.disclaimer')}</p>
+          <div className="space-y-8 animate-fade-up">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Document Upload Card */}
+              <div className="calm-card p-6 bg-white space-y-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-primary-50 text-primary-700 flex items-center justify-center font-bold">
+                    <FileText size={18} />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-surface-900">Upload Legal Notice Photo/PDF</h2>
+                    <p className="text-xs text-surface-500">We extract text and key dates automatically</p>
+                  </div>
+                </div>
 
-            <div className="grid lg:grid-cols-2 gap-8">
-              {/* Upload Section */}
-              <div className="glass-card p-8">
-                <h2 className="text-lg font-semibold mb-4 text-white flex items-center gap-2">📄 Upload Legal Notice</h2>
-                <div className="dropzone"
+                <div
                   onDrop={handleDrop}
                   onDragOver={(e) => e.preventDefault()}
-                  onClick={() => fileInputRef.current?.click()}>
-                  <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={handleFileUpload} className="hidden" />
-                  <div className="text-4xl mb-3">📤</div>
-                  <p className="text-gray-300 mb-1">{t(lang, 'upload.dropzone')}</p>
-                  <p className="text-gray-500 text-sm">PDF, JPG, PNG - Max 10MB</p>
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-8 border-2 border-dashed border-surface-300 hover:border-primary-600 rounded-2xl text-center bg-surface-50/60 hover:bg-primary-50/20 cursor-pointer transition-all"
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <div className="w-12 h-12 mx-auto rounded-full bg-primary-100 text-primary-800 flex items-center justify-center mb-3">
+                    <FileText size={22} />
+                  </div>
+                  <p className="text-sm font-semibold text-surface-800 mb-1">
+                    Click or drag & drop notice file here
+                  </p>
+                  <p className="text-xs text-surface-400">PDF, JPG, PNG up to 10MB</p>
                 </div>
+
                 {uploadedFile && (
-                  <div className="mt-4 p-3 rounded-lg flex items-center gap-3" style={{background:'rgba(0,191,149,0.1)', border:'1px solid rgba(0,191,149,0.2)'}}>
-                    <span className="text-teal-400">✅</span>
-                    <span className="text-sm text-teal-300">{uploadedFile.name}</span>
+                  <div className="p-3 rounded-xl bg-primary-50 border border-primary-200 flex items-center justify-between text-xs text-primary-900">
+                    <span className="font-semibold truncate max-w-[200px]">{uploadedFile.name}</span>
+                    <span className="text-emerald-700 font-bold">✓ Ready for OCR</span>
                   </div>
                 )}
               </div>
 
-              {/* Text / Voice Input */}
-              <div className="glass-card p-8">
-                <h2 className="text-lg font-semibold mb-4 text-white flex items-center gap-2">💬 {t(lang, 'upload.typeQuestion')}</h2>
+              {/* Story / Voice Input Card */}
+              <div className="calm-card p-6 bg-white space-y-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
+                    <Mic size={18} />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-surface-900">Describe What Happened</h2>
+                    <p className="text-xs text-surface-500">Type or speak your side of the situation</p>
+                  </div>
+                </div>
+
                 <textarea
-                  className="input-field min-h-[120px] mb-4 resize-y"
-                  placeholder={t(lang, 'upload.typeQuestion')}
                   value={userQuestion}
                   onChange={(e) => setUserQuestion(e.target.value)}
+                  placeholder="e.g. My landlord Suresh Patil sent this notice asking me to vacate within 15 days because he wants to sell. My rent agreement is valid till Dec 2026..."
+                  className="calm-input min-h-[120px] text-xs sm:text-sm resize-y"
                 />
 
-                <div className="border-t border-gray-700 pt-4">
-                  <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">🎤 {t(lang, 'upload.voiceInput')}</h3>
+                <div className="pt-2 border-t border-surface-100 flex items-center justify-between">
                   <button
+                    type="button"
                     onClick={handleVoiceInput}
-                    className={`w-full py-4 rounded-xl font-semibold text-lg transition-all ${isRecording
-                      ? 'bg-red-500/20 border border-red-500 text-red-400 animate-pulse'
-                      : 'btn-secondary'}`}>
-                    {isRecording ? `🔴 ${t(lang, 'upload.recording')}` : `🎤 ${t(lang, 'upload.startRecording')}`}
+                    className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+                      isRecording
+                        ? 'bg-rose-100 text-rose-800 animate-pulse'
+                        : 'bg-surface-100 text-surface-700 hover:bg-surface-200'
+                    }`}
+                  >
+                    {isRecording ? <MicOff size={14} /> : <Mic size={14} />}
+                    <span>{isRecording ? 'Listening...' : 'Voice Dictate Story'}</span>
                   </button>
-                  {!('webkitSpeechRecognition' in (typeof window !== 'undefined' ? window : {})) && (
-                    <p className="text-xs text-yellow-500 mt-2">⚠️ {t(lang, 'upload.demoMode')}</p>
-                  )}
-                  {voiceTranscript && (
-                    <div className="mt-4 p-4 rounded-xl" style={{background:'rgba(0,100,255,0.08)', border:'1px solid rgba(0,100,255,0.2)'}}>
-                      <p className="text-sm text-gray-300 mb-2 font-medium">Voice Transcript:</p>
-                      <p className="text-sm text-gray-400">{voiceTranscript}</p>
-                    </div>
-                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExtractedText(DEMO_EVICTION_NOTICE);
+                      setUploadedFile(new File([''], 'Eviction_Notice_Advocate_Sharma.pdf'));
+                    }}
+                    className="text-xs text-primary-700 font-medium hover:underline"
+                  >
+                    Load Sample Notice
+                  </button>
                 </div>
               </div>
             </div>
 
-            {/* Proceed */}
-            {(extractedText || userQuestion || voiceTranscript) && (
-              <div className="mt-8 text-center animate-fade-in-up">
-                <button onClick={() => setStep('review')} className="btn-primary text-lg px-12 py-4">
-                  {t(lang, 'common.next')} →
-                </button>
-              </div>
-            )}
+            {/* Next Action */}
+            <div className="text-center pt-4">
+              <button
+                onClick={() => {
+                  if (!extractedText) setExtractedText(DEMO_EVICTION_NOTICE);
+                  setStep('review');
+                }}
+                className="btn-calm-primary !py-3.5 !px-8 !text-sm font-bold !rounded-2xl shadow-soft-sm"
+              >
+                Continue to Notice Review →
+              </button>
+            </div>
           </div>
         )}
 
-        {/* ========== STEP: REVIEW ========== */}
+        {/* STEP 2: REVIEW */}
         {step === 'review' && (
-          <div className="animate-fade-in-up">
-            <h1 className="text-3xl font-bold mb-2 gradient-text">{t(lang, 'upload.reviewText')}</h1>
-            <p className="text-gray-400 mb-8">{t(lang, 'upload.ocrNote')}</p>
+          <div className="space-y-6 animate-fade-up">
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
+              <AlertTriangle size={16} className="text-amber-700 flex-shrink-0 mt-0.5" />
+              <span>
+                Please verify the extracted notice text below before generating your legal rights analysis and evidence checklist.
+              </span>
+            </div>
 
-            {extractedText && (
-              <div className="grid lg:grid-cols-2 gap-6 mb-8">
-                <div className="glass-card p-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="font-semibold text-white">📄 Original Extracted Text</h2>
-                    <button onClick={() => readAloud(extractedText)} className="btn-secondary text-sm px-3 py-1.5">
-                      🔊 {t(lang, 'common.readAloud')}
-                    </button>
-                  </div>
-                  <textarea
-                    className="input-field min-h-[400px] text-sm font-mono resize-y"
-                    value={extractedText}
-                    onChange={(e) => setExtractedText(e.target.value)}
-                  />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="calm-card p-5 bg-white space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-surface-900">Extracted Notice Text</h3>
+                  <button
+                    onClick={() => readAloud(extractedText)}
+                    className="btn-calm-subtle !py-1 !px-2 !text-xs text-primary-700"
+                  >
+                    <Volume2 size={14} />
+                    <span>Read Aloud</span>
+                  </button>
                 </div>
-                <div className="glass-card p-6">
-                  <h2 className="font-semibold text-white mb-4">📝 What This Means (Preview)</h2>
-                  <div className="p-4 rounded-xl text-sm text-gray-300 leading-relaxed" style={{background:'rgba(0,191,149,0.05)'}}>
-                    <p className="mb-3">This is a <strong>legal notice asking you to vacate your rented flat</strong>.</p>
-                    <p className="mb-3">The landlord (Mr. Suresh Patil) has sent this through his lawyer (Advocate Priya Sharma).</p>
-                    <p className="mb-3">You are being asked to <strong>leave within 15 days</strong>.</p>
-                    <p className="mb-3">The reasons given are: expired tenancy agreement, landlord wants to renovate and sell.</p>
-                    <p className="text-yellow-400 text-xs mt-4">⚠️ Full AI analysis will be generated after you click "Analyze"</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {voiceTranscript && (
-              <div className="glass-card p-6 mb-8">
-                <h2 className="font-semibold text-white mb-4">🎤 Your Story</h2>
                 <textarea
-                  className="input-field min-h-[120px] resize-y"
-                  value={voiceTranscript}
-                  onChange={(e) => setVoiceTranscript(e.target.value)}
+                  value={extractedText}
+                  onChange={(e) => setExtractedText(e.target.value)}
+                  className="calm-input min-h-[300px] text-xs font-mono bg-surface-50 resize-y"
                 />
               </div>
-            )}
 
-            {userQuestion && (
-              <div className="glass-card p-6 mb-8">
-                <h2 className="font-semibold text-white mb-4">❓ Your Question</h2>
-                <textarea className="input-field min-h-[80px] resize-y" value={userQuestion} onChange={(e) => setUserQuestion(e.target.value)} />
-              </div>
-            )}
+              <div className="calm-card p-5 bg-white space-y-4">
+                <h3 className="text-sm font-bold text-surface-900">Quick Notice Overview</h3>
+                <div className="space-y-3 text-xs text-surface-700 leading-relaxed">
+                  <div className="p-3 rounded-xl bg-surface-50 border border-surface-200">
+                    <span className="font-semibold block text-surface-900">Sender / Landlord:</span>
+                    Mr. Suresh Patil (via Advocate Priya Sharma)
+                  </div>
+                  <div className="p-3 rounded-xl bg-surface-50 border border-surface-200">
+                    <span className="font-semibold block text-surface-900">Demand:</span>
+                    Vacate flat in 15 days; alleging expired tenancy.
+                  </div>
+                  <div className="p-3 rounded-xl bg-surface-50 border border-surface-200">
+                    <span className="font-semibold block text-surface-900">Notice Date:</span>
+                    September 20, 2026
+                  </div>
+                </div>
 
-            <div className="flex gap-4 justify-center">
-              <button onClick={() => setStep('input')} className="btn-secondary">{t(lang, 'common.back')}</button>
-              <button onClick={handleAnalyze} className="btn-primary text-lg px-10 py-4">🔍 {t(lang, 'upload.analyze')}</button>
-            </div>
-          </div>
-        )}
-
-        {/* ========== STEP: ANALYZING ========== */}
-        {step === 'analyzing' && (
-          <div className="flex flex-col items-center justify-center min-h-[60vh] animate-fade-in-up">
-            <div className="w-20 h-20 rounded-full border-4 border-teal-500 border-t-transparent animate-spin mb-8" />
-            <h2 className="text-2xl font-bold gradient-text mb-3">{t(lang, 'upload.processing')}</h2>
-            <p className="text-gray-400">Analyzing your document and extracting key information...</p>
-            <div className="mt-8 space-y-3 text-sm text-gray-500 max-w-md">
-              <p className="animate-pulse">📄 Reading document...</p>
-              <p className="animate-pulse" style={{animationDelay:'0.5s'}}>🔍 Identifying parties and dates...</p>
-              <p className="animate-pulse" style={{animationDelay:'1s'}}>⚖️ Checking legal references...</p>
-              <p className="animate-pulse" style={{animationDelay:'1.5s'}}>📋 Creating evidence checklist...</p>
-            </div>
-          </div>
-        )}
-
-        {/* ========== STEP: RESULTS ========== */}
-        {step === 'results' && analysis && (
-          <div className="animate-fade-in-up">
-            {/* Safety Banner */}
-            <SafetyBanner level={analysis.safetyLevel} reason={analysis.safetyReason} />
-
-            {/* Human Review Banner */}
-            {analysis.humanReviewNeeded && (
-              <div className="safety-yellow rounded-2xl p-4 mb-6 flex items-center gap-3">
-                <span className="text-xl">👨‍⚖️</span>
-                <div>
-                  <p className="font-semibold text-sm" style={{color:'#eab308'}}>{t(lang, 'results.humanReview')}: Recommended</p>
-                  <p className="text-xs opacity-80">{analysis.humanReviewReason}</p>
+                <div className="pt-4 flex flex-col gap-2">
+                  <button
+                    onClick={handleAnalyze}
+                    className="btn-calm-primary w-full !py-3 !text-sm font-bold"
+                  >
+                    Generate AI Legal Breakdown
+                  </button>
+                  <button
+                    onClick={() => setStep('input')}
+                    className="btn-calm-secondary w-full !py-2 !text-xs"
+                  >
+                    ← Back to Upload
+                  </button>
                 </div>
               </div>
-            )}
+            </div>
+          </div>
+        )}
+
+        {/* STEP 3: ANALYZING */}
+        {step === 'analyzing' && (
+          <div className="calm-card p-12 text-center bg-white space-y-4 my-12 animate-fade-up">
+            <div className="w-12 h-12 mx-auto rounded-full border-3 border-primary-600 border-t-transparent animate-spin" />
+            <h3 className="text-lg font-bold text-surface-900">Analyzing Your Legal Notice...</h3>
+            <p className="text-xs text-surface-500 max-w-sm mx-auto leading-relaxed">
+              Extracting parties, key dates, deadlines, applicable Rent Control statutes, and generating your evidence checklist.
+            </p>
+          </div>
+        )}
+
+        {/* STEP 4: RESULTS */}
+        {step === 'results' && analysis && (
+          <div className="space-y-6 animate-fade-up">
+            {/* Safety & Urgency Banner */}
+            <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 flex flex-col sm:flex-row items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center flex-shrink-0">
+                  <ShieldCheck size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-emerald-950">
+                    Tenancy Protection Status: Legally Defensible
+                  </h3>
+                  <p className="text-xs text-emerald-800 mt-0.5 leading-relaxed">
+                    Landlord cannot physically evict you in 15 days without a civil court decree. You have the statutory right to issue a written reply.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsEscalateOpen(true)}
+                className="btn-calm-primary !py-2 !px-4 !text-xs !bg-emerald-800 hover:!bg-emerald-900 flex-shrink-0"
+              >
+                Connect to DLSA Panel
+              </button>
+            </div>
 
             {/* Tabs */}
-            <div className="flex flex-wrap gap-2 mb-8 pb-4 border-b border-gray-800 overflow-x-auto">
-              {tabs.map(tab => (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap ${activeTab === tab.id
-                    ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>
+            <div className="flex flex-wrap gap-2 border-b border-surface-200 pb-3">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+                    activeTab === tab.id
+                      ? 'bg-primary-700 text-white shadow-soft-sm'
+                      : 'bg-white text-surface-600 border border-surface-200 hover:bg-surface-50'
+                  }`}
+                >
                   {tab.label}
                 </button>
               ))}
@@ -382,258 +400,138 @@ export default function CasePage() {
 
             {/* TAB: Summary */}
             {activeTab === 'summary' && (
-              <div className="space-y-6 animate-slide-in">
-                <div className="glass-card p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <h2 className="text-xl font-bold text-white">📝 {t(lang, 'results.summary')}</h2>
-                    <button onClick={() => readAloud(analysis.summary)} className="btn-secondary text-sm px-3 py-1.5">🔊 {t(lang, 'common.readAloud')}</button>
+              <div className="space-y-6">
+                <div className="calm-card p-6 bg-white space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-bold text-surface-900">Plain-Language Notice Summary</h3>
+                    <button
+                      onClick={() => readAloud(analysis.summary)}
+                      className="btn-calm-subtle !py-1 !px-2 !text-xs text-primary-700"
+                    >
+                      <Volume2 size={14} />
+                      <span>Read Aloud</span>
+                    </button>
                   </div>
-                  <p className={`text-gray-300 leading-relaxed ${lowLiteracy ? 'text-lg' : 'text-base'}`}>{analysis.summary}</p>
+                  <p className={`text-surface-800 leading-relaxed ${lowLiteracy ? 'text-base font-medium' : 'text-sm'}`}>
+                    {analysis.summary}
+                  </p>
                 </div>
 
-                {/* Parties */}
-                <div className="glass-card p-6">
-                  <h2 className="text-xl font-bold text-white mb-4">👥 {t(lang, 'results.parties')}</h2>
-                  <div className="grid md:grid-cols-3 gap-4">
-                    {analysis.parties.map((p, i) => (
-                      <div key={i} className="p-4 rounded-xl" style={{background:'rgba(0,191,149,0.05)', border:'1px solid rgba(0,191,149,0.1)'}}>
-                        <p className="font-semibold text-teal-400">{p.name}</p>
-                        <p className="text-sm text-gray-400 mt-1">{p.role}</p>
-                        <p className="text-xs text-gray-500 mt-2">{p.description}</p>
+                {/* Parties Involved */}
+                <div className="calm-card p-6 bg-white space-y-4">
+                  <h3 className="text-sm font-bold text-surface-900">Parties Identified</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {analysis.parties.map((p, idx) => (
+                      <div key={idx} className="p-3.5 rounded-xl bg-surface-50 border border-surface-200 text-xs">
+                        <span className="font-bold text-surface-900 block">{p.name}</span>
+                        <span className="text-primary-700 font-semibold block mt-0.5">{p.role}</span>
+                        <p className="text-surface-500 mt-1 text-[11px]">{p.description}</p>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* Dates & Deadlines */}
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="glass-card p-6">
-                    <h2 className="text-lg font-bold text-white mb-4">📅 {t(lang, 'results.dates')}</h2>
-                    {analysis.importantDates.map((d, i) => (
-                      <div key={i} className="flex items-start gap-3 mb-3 p-3 rounded-lg" style={{background:'rgba(26,35,50,0.5)'}}>
-                        <span className="text-teal-400 font-mono text-sm mt-0.5">{d.date}</span>
-                        <div>
-                          <p className="text-sm text-gray-300">{d.description}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <ConfidenceChip level={d.confidence} />
-                            <span className="text-xs text-gray-500">{d.legalSignificance}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="glass-card p-6">
-                    <h2 className="text-lg font-bold text-white mb-4">⏰ {t(lang, 'results.deadlines')}</h2>
-                    {analysis.possibleDeadlines.map((d, i) => (
-                      <div key={i} className="p-4 rounded-xl safety-yellow mb-3">
-                        <p className="font-semibold text-sm" style={{color:'#eab308'}}>{d.date} — {d.description}</p>
-                        <p className="text-xs mt-2 opacity-80">{d.warning}</p>
-                        <ConfidenceChip level={d.confidence} />
+                {/* Questions for Your Lawyer */}
+                <div className="calm-card p-6 bg-white space-y-3">
+                  <h3 className="text-sm font-bold text-surface-900">Questions to Ask Your Free Legal Aid Advocate</h3>
+                  <div className="space-y-2 text-xs text-surface-800">
+                    {analysis.questionsForLawyer.map((q, idx) => (
+                      <div key={idx} className="p-3 rounded-xl bg-surface-50 border border-surface-200 flex items-start gap-2.5">
+                        <span className="w-5 h-5 rounded-full bg-primary-100 text-primary-800 flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5">
+                          {idx + 1}
+                        </span>
+                        <span>{q}</span>
                       </div>
                     ))}
                   </div>
                 </div>
-
-                {/* Issue Areas & Missing Info */}
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="glass-card p-6">
-                    <h2 className="text-lg font-bold text-white mb-4">🏷️ {t(lang, 'results.issueAreas')}</h2>
-                    <div className="flex flex-wrap gap-2">
-                      {analysis.issueAreas.map((area, i) => (
-                        <span key={i} className="px-3 py-1.5 rounded-full text-sm bg-teal-500/10 text-teal-400 border border-teal-500/20">{area}</span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="glass-card p-6">
-                    <h2 className="text-lg font-bold text-white mb-4">❓ {t(lang, 'results.missingInfo')}</h2>
-                    <ul className="space-y-2">
-                      {analysis.missingInformation.map((m, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
-                          <span className="text-yellow-400 mt-0.5">•</span> {m}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-
-                {/* Questions for Lawyer */}
-                <div className="glass-card p-6">
-                  <h2 className="text-lg font-bold text-white mb-4">👨‍⚖️ {t(lang, 'results.lawyerQuestions')}</h2>
-                  <ol className="space-y-3">
-                    {analysis.questionsForLawyer.map((q, i) => (
-                      <li key={i} className="flex items-start gap-3 text-sm text-gray-300">
-                        <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{background:'rgba(0,100,255,0.15)', color:'#4d98ff'}}>{i + 1}</span>
-                        {q}
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-
-                {/* Voice Story Facts */}
-                {voiceFacts && (
-                  <div className="glass-card p-6">
-                    <h2 className="text-lg font-bold text-white mb-4">🎤 Your Story — Structured Facts</h2>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="p-4 rounded-xl" style={{background:'rgba(0,191,149,0.05)'}}>
-                        <p className="text-sm font-semibold text-teal-400 mb-2">Who is involved</p>
-                        <ul className="text-sm text-gray-300 space-y-1">
-                          {voiceFacts.whoIsInvolved.map((w, i) => <li key={i}>• {w}</li>)}
-                        </ul>
-                      </div>
-                      <div className="p-4 rounded-xl" style={{background:'rgba(0,100,255,0.05)'}}>
-                        <p className="text-sm font-semibold text-blue-400 mb-2">What happened</p>
-                        <p className="text-sm text-gray-300">{voiceFacts.whatHappened}</p>
-                      </div>
-                      <div className="p-4 rounded-xl" style={{background:'rgba(139,92,246,0.05)'}}>
-                        <p className="text-sm font-semibold text-purple-400 mb-2">When & Where</p>
-                        <p className="text-sm text-gray-300">{voiceFacts.whenItHappened}</p>
-                        <p className="text-sm text-gray-300 mt-1">{voiceFacts.whereItHappened}</p>
-                      </div>
-                      <div className="p-4 rounded-xl" style={{background:'rgba(234,179,8,0.05)'}}>
-                        <p className="text-sm font-semibold text-yellow-400 mb-2">What is uncertain</p>
-                        <ul className="text-sm text-gray-300 space-y-1">
-                          {voiceFacts.whatIsUncertain.map((u, i) => <li key={i}>• {u}</li>)}
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
             {/* TAB: Timeline */}
             {activeTab === 'timeline' && (
-              <div className="animate-slide-in">
-                <div className="glass-card p-6">
-                  <h2 className="text-xl font-bold text-white mb-6">📅 {t(lang, 'results.timeline')}</h2>
-                  <div className="relative pl-10">
-                    <div className="timeline-line" />
-                    {timeline.map((event, i) => (
-                      <div key={event.id} className="relative mb-6 pl-8 animate-fade-in-up" style={{animationDelay:`${i*0.1}s`}}>
-                        <div className="absolute left-[-22px] top-2 w-4 h-4 rounded-full border-2 border-teal-400" style={{background: event.confidence === 'high' ? '#00bf95' : event.confidence === 'medium' ? '#eab308' : '#ef4444'}} />
-                        <div className="glass-card p-4">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-grow">
-                              {editingEvent === event.id ? (
-                                <div className="space-y-2">
-                                  <input className="input-field text-sm" value={event.title} onChange={(e) => updateTimelineEvent(event.id, 'title', e.target.value)} />
-                                  <input className="input-field text-sm" type="text" value={event.date} onChange={(e) => updateTimelineEvent(event.id, 'date', e.target.value)} />
-                                  <textarea className="input-field text-sm" value={event.description} onChange={(e) => updateTimelineEvent(event.id, 'description', e.target.value)} />
-                                  <button onClick={() => setEditingEvent(null)} className="btn-primary text-sm px-4 py-1.5">Save</button>
-                                </div>
-                              ) : (
-                                <>
-                                  <div className="flex items-center gap-3 mb-1">
-                                    <span className="text-teal-400 font-mono text-sm">{event.date}</span>
-                                    <ConfidenceChip level={event.confidence} />
-                                    <span className="text-xs text-gray-500 capitalize">({event.source})</span>
-                                  </div>
-                                  <h3 className="font-semibold text-white">{event.title}</h3>
-                                  <p className="text-sm text-gray-400 mt-1">{event.description}</p>
-                                </>
-                              )}
-                            </div>
-                            {event.editable && editingEvent !== event.id && (
-                              <div className="flex gap-2 flex-shrink-0">
-                                <button onClick={() => setEditingEvent(event.id)} className="text-xs text-gray-500 hover:text-teal-400 transition">✏️</button>
-                                <button onClick={() => deleteTimelineEvent(event.id)} className="text-xs text-gray-500 hover:text-red-400 transition">🗑️</button>
-                              </div>
-                            )}
-                          </div>
+              <div className="calm-card p-6 bg-white space-y-4">
+                <h3 className="text-base font-bold text-surface-900">Key Notice Dates & Upcoming Deadlines</h3>
+                <div className="space-y-3">
+                  {timeline.map((event) => (
+                    <div
+                      key={event.id}
+                      className="p-4 rounded-xl bg-surface-50 border border-surface-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-primary-800 bg-primary-50 px-2 py-0.5 rounded-md border border-primary-100">
+                            {event.date}
+                          </span>
+                          <span className="badge-warm text-[10px]">{event.source}</span>
                         </div>
+                        <h4 className="font-bold text-surface-900 text-sm">{event.title}</h4>
+                        <p className="text-surface-600">{event.description}</p>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
 
             {/* TAB: Evidence Locker */}
             {activeTab === 'evidence' && (
-              <div className="animate-slide-in">
-                <div className="glass-card p-6">
-                  <h2 className="text-xl font-bold text-white mb-6">🗂️ {t(lang, 'results.evidenceLocker')}</h2>
-
-                  {/* Uploaded */}
-                  <h3 className="font-semibold text-teal-400 mb-3">Uploaded Evidence</h3>
-                  <div className="space-y-3 mb-8">
-                    {evidence.filter(e => e.uploaded).map(e => (
-                      <div key={e.id} className="flex items-center gap-4 p-4 rounded-xl" style={{background:'rgba(0,191,149,0.05)', border:'1px solid rgba(0,191,149,0.1)'}}>
-                        <span className="text-2xl">✅</span>
-                        <div>
-                          <p className="font-medium text-white">{e.name}</p>
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-400">{e.category}</span>
+              <div className="calm-card p-6 bg-white space-y-4">
+                <h3 className="text-base font-bold text-surface-900">Evidence Checklist for Notice Defense</h3>
+                <div className="space-y-3 text-xs">
+                  {evidence.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`p-4 rounded-xl border flex items-start gap-3 ${
+                        item.uploaded
+                          ? 'bg-emerald-50/50 border-emerald-200'
+                          : 'bg-amber-50/50 border-amber-200'
+                      }`}
+                    >
+                      <span className="text-base mt-0.5">{item.uploaded ? '✓' : '📎'}</span>
+                      <div className="space-y-1 flex-1">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-bold text-surface-900">{item.name}</h4>
+                          <span className="badge-warm text-[10px]">{item.category}</span>
                         </div>
+                        {item.suggestion && (
+                          <p className="text-surface-600">{item.suggestion}</p>
+                        )}
                       </div>
-                    ))}
-                  </div>
-
-                  {/* Missing (Suggestions) */}
-                  <h3 className="font-semibold text-yellow-400 mb-3">Missing Evidence (Suggestions — not requirements)</h3>
-                  <div className="space-y-3">
-                    {evidence.filter(e => e.missing).map(e => (
-                      <div key={e.id} className="flex items-start gap-4 p-4 rounded-xl" style={{background:'rgba(234,179,8,0.04)', border:'1px solid rgba(234,179,8,0.1)'}}>
-                        <span className="text-2xl mt-0.5">📎</span>
-                        <div>
-                          <p className="font-medium text-white">{e.name}</p>
-                          <p className="text-sm text-gray-400 mt-1">{e.suggestion}</p>
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 mt-2 inline-block">{e.category}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
 
-            {/* TAB: Checklists */}
+            {/* TAB: Checklist */}
             {activeTab === 'checklist' && (
-              <div className="grid md:grid-cols-2 gap-6 animate-slide-in">
-                <div className="glass-card p-6">
-                  <h2 className="text-xl font-bold text-white mb-4">✅ {t(lang, 'results.todayChecklist')}</h2>
-                  <div className="space-y-3">
-                    {analysis.todayChecklist.map((item, i) => (
-                      <label key={i} className="flex items-start gap-3 p-3 rounded-xl cursor-pointer hover:bg-white/5 transition">
-                        <input type="checkbox" className="mt-1 w-5 h-5 rounded accent-teal-500" />
-                        <span className={`text-sm text-gray-300 ${lowLiteracy ? 'text-base' : ''}`}>{item}</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="calm-card p-5 bg-white space-y-3">
+                  <h3 className="text-sm font-bold text-emerald-800 flex items-center gap-1.5">
+                    <CheckCircle2 size={16} />
+                    Things You Must Do Today
+                  </h3>
+                  <div className="space-y-2 text-xs text-surface-800">
+                    {analysis.todayChecklist.map((item, idx) => (
+                      <label key={idx} className="p-3 rounded-xl bg-surface-50 border border-surface-200 flex items-start gap-2.5 cursor-pointer">
+                        <input type="checkbox" className="mt-0.5 rounded accent-primary-600" />
+                        <span>{item}</span>
                       </label>
                     ))}
                   </div>
                 </div>
-                <div className="glass-card p-6">
-                  <h2 className="text-xl font-bold text-white mb-4">🚫 {t(lang, 'results.avoidChecklist')}</h2>
-                  <div className="space-y-3">
-                    {analysis.whatToAvoid.map((item, i) => (
-                      <div key={i} className="flex items-start gap-3 p-3 rounded-xl" style={{background:'rgba(239,68,68,0.04)'}}>
-                        <span className="text-red-400 mt-0.5">✕</span>
-                        <span className={`text-sm text-gray-300 ${lowLiteracy ? 'text-base' : ''}`}>{item}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
 
-            {/* TAB: Sources */}
-            {activeTab === 'sources' && (
-              <div className="animate-slide-in">
-                <div className="glass-card p-6">
-                  <h2 className="text-xl font-bold text-white mb-6">📚 {t(lang, 'results.sources')}</h2>
-                  <div className="space-y-4">
-                    {analysis.sourceCitations.map(src => (
-                      <div key={src.id} className="p-4 rounded-xl" style={{background:'rgba(26,35,50,0.5)', border:'1px solid rgba(45,55,72,0.5)'}}>
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h3 className="font-semibold text-white">{src.title}</h3>
-                            <a href={src.url} target="_blank" rel="noopener" className="text-sm text-teal-400 hover:underline break-all">{src.url}</a>
-                            <div className="flex flex-wrap items-center gap-2 mt-2">
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400">{src.jurisdiction}</span>
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400">{src.sourceType}</span>
-                              <ConfidenceChip level={src.confidence} />
-                              {src.directlyUsed && <span className="text-xs px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-400">Directly Used</span>}
-                            </div>
-                          </div>
-                        </div>
+                <div className="calm-card p-5 bg-white space-y-3">
+                  <h3 className="text-sm font-bold text-rose-800 flex items-center gap-1.5">
+                    <AlertTriangle size={16} />
+                    Things to Avoid
+                  </h3>
+                  <div className="space-y-2 text-xs text-rose-950">
+                    {analysis.whatToAvoid.map((item, idx) => (
+                      <div key={idx} className="p-3 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-2.5">
+                        <span className="text-rose-700 font-bold">✕</span>
+                        <span>{item}</span>
                       </div>
                     ))}
                   </div>
@@ -643,76 +541,65 @@ export default function CasePage() {
 
             {/* TAB: Legal Aid */}
             {activeTab === 'legalaid' && (
-              <div className="animate-slide-in space-y-6">
-                <div className="glass-card p-6">
-                  <h2 className="text-xl font-bold text-white mb-6">⚖️ {t(lang, 'legalAid.title')}</h2>
-                  <div className="space-y-4">
-                    {[
-                      { name: t(lang, 'legalAid.nalsa'), url: 'https://nalsa.gov.in/', desc: 'Free legal services for eligible persons across India' },
-                      { name: t(lang, 'legalAid.slsa') + ' (Maharashtra)', url: 'https://mslsa.gov.in/', desc: 'Maharashtra State Legal Services Authority' },
-                      { name: t(lang, 'legalAid.dlsa') + ' (Mumbai)', url: 'https://doj.gov.in/page/district-legal-services-authorities', desc: 'District-level free legal aid services' },
-                    ].map((aid, i) => (
-                      <div key={i} className="p-5 rounded-xl flex items-start justify-between gap-4" style={{background:'rgba(0,191,149,0.05)', border:'1px solid rgba(0,191,149,0.1)'}}>
-                        <div>
-                          <h3 className="font-semibold text-teal-400">{aid.name}</h3>
-                          <p className="text-sm text-gray-400 mt-1">{aid.desc}</p>
-                        </div>
-                        <a href={aid.url} target="_blank" rel="noopener" className="btn-secondary text-sm px-4 py-2 flex-shrink-0">
-                          {t(lang, 'legalAid.website')} ↗
-                        </a>
-                      </div>
-                    ))}
+              <div className="calm-card p-6 bg-white space-y-4">
+                <h3 className="text-base font-bold text-surface-900">Official Free Legal Aid for This Case</h3>
+                <div className="p-5 rounded-2xl bg-primary-50/50 border border-primary-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h4 className="font-bold text-surface-900">District Legal Services Authority (DLSA)</h4>
+                    <p className="text-xs text-surface-600 mt-0.5">
+                      City Civil & Sessions Court, Old Secretariat Building, Fort, Mumbai - 400032
+                    </p>
                   </div>
-                  <div className="mt-6 p-5 rounded-xl safety-green text-center">
-                    <p className="text-lg font-bold" style={{color:'#22c55e'}}>📞 {t(lang, 'legalAid.helpline')}</p>
-                    <p className="text-sm text-gray-400 mt-1">Free legal help available nationwide</p>
-                  </div>
+                  <a href="tel:15100" className="btn-calm-primary !py-2 !px-4 !text-xs whitespace-nowrap">
+                    Call 15100 Helpline
+                  </a>
                 </div>
               </div>
             )}
 
             {/* TAB: Case Pack */}
             {activeTab === 'casepack' && (
-              <div className="animate-slide-in space-y-6">
-                <div className="glass-card p-6">
-                  <h2 className="text-xl font-bold text-white mb-6">📦 {t(lang, 'results.casePack')}</h2>
-                  <p className="text-gray-400 mb-6">Create a lawyer-ready case pack containing your approved summary, timeline, document list, important dates, evidence list, and questions for review.</p>
-
-                  <div className="p-5 rounded-xl mb-6" style={{background:'rgba(234,179,8,0.05)', border:'1px solid rgba(234,179,8,0.1)'}}>
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input type="checkbox" checked={consentGiven} onChange={(e) => setConsentGiven(e.target.checked)} className="mt-1 w-5 h-5 rounded accent-teal-500" />
-                      <span className="text-sm text-gray-300">{t(lang, 'casePack.consent')}</span>
-                    </label>
-                  </div>
-
-                  <button onClick={exportCasePack} disabled={!consentGiven}
-                    className={`btn-primary w-full py-4 text-lg ${!consentGiven ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                    📥 {t(lang, 'casePack.download')}
-                  </button>
+              <div className="calm-card p-6 bg-white space-y-5">
+                <div>
+                  <h3 className="text-base font-bold text-surface-900">Export Lawyer-Ready Case Pack</h3>
+                  <p className="text-xs text-surface-600 mt-1">
+                    Download a clean structured briefing package with your verified facts, timeline, evidence list, and statutory questions for your appointed DLSA lawyer.
+                  </p>
                 </div>
 
-                {/* Delete Case */}
-                <div className="glass-card p-6">
-                  <h2 className="text-lg font-bold text-red-400 mb-4">🗑️ {t(lang, 'results.deleteCase')}</h2>
-                  {!showDeleteConfirm ? (
-                    <button onClick={() => setShowDeleteConfirm(true)} className="btn-danger">
-                      {t(lang, 'results.deleteCase')}
-                    </button>
-                  ) : (
-                    <div className="p-4 rounded-xl safety-red">
-                      <p className="text-sm mb-4">Are you sure? This will permanently delete all your case data, uploaded documents, and analysis results.</p>
-                      <div className="flex gap-3">
-                        <button onClick={deleteCase} className="btn-danger">Yes, Delete Everything</button>
-                        <button onClick={() => setShowDeleteConfirm(false)} className="btn-secondary">Cancel</button>
-                      </div>
-                    </div>
-                  )}
+                <div className="p-4 rounded-xl bg-surface-50 border border-surface-200">
+                  <label className="flex items-start gap-3 cursor-pointer text-xs text-surface-700">
+                    <input
+                      type="checkbox"
+                      checked={consentGiven}
+                      onChange={(e) => setConsentGiven(e.target.checked)}
+                      className="mt-0.5 rounded accent-primary-600"
+                    />
+                    <span>
+                      I give consent to compile this summary and evidence list for my personal use or sharing with a pro bono advocate.
+                    </span>
+                  </label>
                 </div>
+
+                <button
+                  onClick={exportCasePack}
+                  disabled={!consentGiven}
+                  className="btn-calm-primary w-full !py-3 !text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <Download size={16} />
+                  <span>Download Case Pack (.JSON)</span>
+                </button>
               </div>
             )}
           </div>
         )}
-      </main>
+      </div>
+
+      <EscalationModal
+        isOpen={isEscalateOpen}
+        onClose={() => setIsEscalateOpen(false)}
+        caseTopic="Eviction Notice Formal Reply"
+      />
     </div>
   );
 }

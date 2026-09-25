@@ -1,9 +1,74 @@
-
 export type Language = 'en' | 'hi' | 'mr';
-export type IssueCategory = 'rent-eviction' | 'employment' | 'consumer' | 'domestic-violence' | 'other';
-export type SafetyLevel = 'green' | 'yellow' | 'red';
+
+export type IssueCategory =
+  | 'housing-eviction'
+  | 'employment-wages'
+  | 'consumer-rights'
+  | 'family-safety'
+  | 'debt-loans'
+  | 'cyber-fraud'
+  | 'other';
+
 export type Confidence = 'high' | 'medium' | 'low';
-export type EvidenceCategory = 'legal-notice' | 'agreement' | 'payment-proof' | 'message' | 'identity-proof' | 'photograph' | 'other';
+export type SafetyLevel = 'green' | 'yellow' | 'red';
+
+export interface ChatMessage {
+  id: string;
+  sender: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: string;
+  category?: IssueCategory;
+  plainLanguageSummary?: string;
+  keyRights?: string[];
+  safeNextSteps?: string[];
+  thingsToAvoid?: string[];
+  relevantLaws?: string[];
+  suggestedResources?: LegalAidResource[];
+  confidence?: Confidence;
+  disclaimer?: string;
+  humanReviewRecommended?: boolean;
+}
+
+export interface LegalAidResource {
+  id: string;
+  name: string;
+  category: 'government' | 'dlsa' | 'slsa' | 'helpline' | 'ngo' | 'court-clinic';
+  city: string;
+  state: string;
+  phone: string;
+  tollFree?: string;
+  email?: string;
+  website?: string;
+  address: string;
+  servicesProvided: string[];
+  eligibility: string;
+  isVerified: boolean;
+  timings: string;
+}
+
+export interface SavedCase {
+  id: string;
+  title: string;
+  category: IssueCategory;
+  status: 'active' | 'resolved' | 'escalated' | 'draft';
+  lastUpdated: string;
+  createdDate: string;
+  summary: string;
+  unreadCount?: number;
+  nextDeadline?: string;
+  documentsCount: number;
+  messagesCount: number;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  fullName: string;
+  preferredLanguage: Language;
+  state?: string;
+  city?: string;
+  createdAt: string;
+}
 
 export interface TimelineEvent {
   id: string;
@@ -18,7 +83,7 @@ export interface TimelineEvent {
 export interface EvidenceItem {
   id: string;
   name: string;
-  category: EvidenceCategory;
+  category: string;
   fileUrl?: string;
   uploaded: boolean;
   missing: boolean;

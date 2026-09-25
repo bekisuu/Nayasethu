@@ -9,42 +9,66 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Trustworthy Sage Teal / Slate Green Primary Accent
         primary: {
-          50: '#e0f7f2',
-          100: '#b2ebdf',
-          200: '#80dfca',
-          300: '#4dd3b5',
-          400: '#26c9a5',
-          500: '#00bf95',
-          600: '#00a984',
-          700: '#008c73',
-          800: '#006f62',
-          900: '#004c40',
+          50: '#F0FDFA',
+          100: '#CCFBF1',
+          200: '#99F6E4',
+          300: '#5EEAD4',
+          400: '#2DD4BF',
+          500: '#14B8A6',
+          600: '#0D9488',
+          700: '#0F766E', // Primary base button / link
+          800: '#115E59',
+          900: '#134E4A',
+          950: '#042F2E',
         },
-        secondary: {
-          50: '#e6f2ff',
-          100: '#b3d4ff',
-          200: '#80b6ff',
-          300: '#4d98ff',
-          400: '#267eff',
-          500: '#0064ff',
-          600: '#0059e6',
-          700: '#004ecc',
-          800: '#0042b3',
-          900: '#002d80',
+        // Warm Stone Neutrals (Calm, paper-like, non-sterile)
+        surface: {
+          50: '#FAF9F6', // Off-white warm canvas
+          100: '#F5F5F4',
+          200: '#E7E5E4',
+          300: '#D6D3D1',
+          400: '#A8A29E',
+          500: '#78716C',
+          600: '#57534E',
+          700: '#44403C',
+          800: '#292524',
+          900: '#1C1917', // High contrast readable text
         },
-        neutral: {
-          50: '#fafafa',
-          100: '#f5f5f5',
-          200: '#e5e5e5',
-          300: '#d4d4d4',
-          400: '#a3a3a3',
-          500: '#737373',
-          600: '#525252',
-          700: '#404040',
-          800: '#262626',
-          900: '#171717',
-        },
+        // Calming Semantic Accents
+        calm: {
+          amberBg: '#FFFBEB',
+          amberBorder: '#FDE68A',
+          amberText: '#92400E',
+          
+          roseBg: '#FEF2F2',
+          roseBorder: '#FECACA',
+          roseText: '#991B1B',
+          
+          emeraldBg: '#ECFDF5',
+          emeraldBorder: '#A7F3D0',
+          emeraldText: '#065F46',
+          
+          skyBg: '#F0F9FF',
+          skyBorder: '#BAE6FD',
+          skyText: '#075985',
+        }
+      },
+      fontFamily: {
+        sans: ['var(--font-inter)', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        devanagari: ['var(--font-devanagari)', 'Noto Sans Devanagari', 'sans-serif'],
+      },
+      borderRadius: {
+        '2xl': '1rem',
+        '3xl': '1.5rem',
+        '4xl': '2rem',
+      },
+      boxShadow: {
+        'soft-sm': '0 1px 3px rgba(28, 25, 23, 0.04), 0 1px 2px rgba(28, 25, 23, 0.02)',
+        'soft-md': '0 4px 16px -2px rgba(28, 25, 23, 0.06), 0 2px 6px -1px rgba(28, 25, 23, 0.03)',
+        'soft-lg': '0 12px 32px -4px rgba(28, 25, 23, 0.08), 0 4px 12px -2px rgba(28, 25, 23, 0.04)',
+        'soft-focus': '0 0 0 4px rgba(15, 118, 110, 0.15)',
       },
     },
   },

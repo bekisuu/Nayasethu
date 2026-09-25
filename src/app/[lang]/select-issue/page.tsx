@@ -1,71 +1,112 @@
-
 'use client';
+
+import React from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { t } from '../../../lib/i18n';
+import {
+  Scale,
+  Home,
+  Briefcase,
+  ShoppingBag,
+  HeartHandshake,
+  CreditCard,
+  Shield,
+  ArrowRight
+} from '../../../components/Icons';
 
 const issues = [
-  { id: 'rent-eviction', icon: '🏠', colorFrom: '#00bf95', colorTo: '#008c73' },
-  { id: 'employment', icon: '💼', colorFrom: '#0064ff', colorTo: '#004ecc' },
-  { id: 'consumer', icon: '🛒', colorFrom: '#8b5cf6', colorTo: '#6d28d9' },
-  { id: 'domestic-violence', icon: '🛡️', colorFrom: '#ef4444', colorTo: '#dc2626' },
-  { id: 'other', icon: '📋', colorFrom: '#6b7280', colorTo: '#4b5563' },
+  {
+    id: 'rent-eviction',
+    title: 'Housing & Rent',
+    desc: 'Notice to vacate, security deposit disputes, arbitrary rent hikes, illegal lockouts.',
+    icon: Home,
+    color: 'bg-emerald-50 text-emerald-800 border-emerald-100'
+  },
+  {
+    id: 'employment',
+    title: 'Workplace & Salary',
+    desc: 'Withheld salary, unlawful termination, unpaid overtime, delayed gratuity.',
+    icon: Briefcase,
+    color: 'bg-blue-50 text-blue-800 border-blue-100'
+  },
+  {
+    id: 'consumer',
+    title: 'Consumer & Refunds',
+    desc: 'Broken deliveries, refusal to refund, deceptive billing, warranty refusal.',
+    icon: ShoppingBag,
+    color: 'bg-purple-50 text-purple-800 border-purple-100'
+  },
+  {
+    id: 'domestic-violence',
+    title: 'Domestic & Family Safety',
+    desc: 'Emergency protection orders, right to reside in matrimonial home, maintenance.',
+    icon: HeartHandshake,
+    color: 'bg-rose-50 text-rose-800 border-rose-100'
+  },
+  {
+    id: 'debt-loans',
+    title: 'Cheque & Loan Recovery',
+    desc: 'Section 138 NI Act notices, recovery agent harassment, dispute settlement.',
+    icon: CreditCard,
+    color: 'bg-amber-50 text-amber-800 border-amber-100'
+  },
+  {
+    id: 'other',
+    title: 'Other Legal Inquiries',
+    desc: 'General legal notice review, RTI filings, police complaints, civil disputes.',
+    icon: Shield,
+    color: 'bg-teal-50 text-teal-800 border-teal-100'
+  }
 ];
-
-const issueKeys: Record<string, { name: string; desc: string }> = {
-  'rent-eviction': { name: 'rent', desc: 'rentDesc' },
-  'employment': { name: 'employment', desc: 'employmentDesc' },
-  'consumer': { name: 'consumer', desc: 'consumerDesc' },
-  'domestic-violence': { name: 'domestic', desc: 'domesticDesc' },
-  'other': { name: 'other', desc: 'otherDesc' },
-};
 
 export default function SelectIssuePage() {
   const params = useParams();
   const lang = (params?.lang as string) || 'en';
 
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header style={{ background: 'rgba(15, 20, 25, 0.85)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(45,55,72,0.4)' }}>
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="text-2xl">⚖️</span>
-            <span className="text-xl font-bold gradient-text">{t(lang, 'app.title')}</span>
-          </Link>
-          <Link href={`/${lang}/dashboard`} className="text-sm text-gray-400 hover:text-white transition">{t(lang, 'nav.dashboard')}</Link>
+    <div className="flex-1 bg-[#FAF9F6] py-12">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+        <div className="text-center mb-10">
+          <span className="badge-teal text-xs mb-2">Step 1 of 2</span>
+          <h1 className="text-3xl font-bold text-surface-900 tracking-tight mb-2">
+            Select the topic you need assistance with
+          </h1>
+          <p className="text-sm text-surface-600">
+            We will customize the legal notice analyzer, evidence checklist, and legal aid references.
+          </p>
         </div>
-      </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-16">
-        <h1 className="text-3xl font-bold mb-2 gradient-text">{t(lang, 'issues.title')}</h1>
-        <p className="text-gray-400 mb-10">{t(lang, 'app.tagline')}</p>
-
-        <div className="grid md:grid-cols-2 gap-6">
-          {issues.map((issue, i) => {
-            const keys = issueKeys[issue.id];
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {issues.map((issue) => {
+            const Icon = issue.icon;
             return (
-              <Link key={issue.id} href={`/${lang}/case/${issue.id}`}
-                className="glass-card p-6 flex items-start gap-4 animate-fade-in-up"
-                style={{ animationDelay: `${i * 0.1}s` }}>
-                <div className="text-4xl w-14 h-14 flex items-center justify-center rounded-xl flex-shrink-0"
-                  style={{ background: `linear-gradient(135deg, ${issue.colorFrom}22, ${issue.colorTo}22)` }}>
-                  {issue.icon}
+              <Link
+                key={issue.id}
+                href={`/${lang}/case/${issue.id}`}
+                className="calm-card-interactive p-6 flex items-start gap-4"
+              >
+                <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center flex-shrink-0 ${issue.color}`}>
+                  <Icon size={22} />
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white mb-1">{t(lang, `issues.${keys.name}`)}</h3>
-                  <p className="text-gray-400 text-sm">{t(lang, `issues.${keys.desc}`)}</p>
+                <div className="space-y-1">
+                  <h3 className="text-base font-bold text-surface-900">{issue.title}</h3>
+                  <p className="text-xs text-surface-600 leading-relaxed">{issue.desc}</p>
+                  <div className="pt-2 flex items-center gap-1 text-xs font-semibold text-primary-700">
+                    <span>Analyze Notice</span>
+                    <ArrowRight size={13} />
+                  </div>
                 </div>
               </Link>
             );
           })}
         </div>
 
-        {/* Disclaimer */}
-        <div className="mt-12 safety-yellow rounded-2xl p-4 text-center">
-          <p className="text-sm" style={{ color: '#eab308' }}>⚠️ {t(lang, 'app.disclaimer')}</p>
+        <div className="mt-10 text-center">
+          <Link href="/chat" className="text-xs font-medium text-surface-600 hover:text-primary-800 underline">
+            Prefer to chat directly? Open AI Legal Assistant →
+          </Link>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
